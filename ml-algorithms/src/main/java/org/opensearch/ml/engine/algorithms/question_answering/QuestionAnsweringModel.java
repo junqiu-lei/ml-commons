@@ -62,6 +62,12 @@ public class QuestionAnsweringModel extends DLModel {
 
     @Override
     public Translator<Input, Output> getTranslator(String engine, MLModelConfig modelConfig) throws IllegalArgumentException {
+        log.debug("Creating translator for model type: {}", modelConfig.getModelType());
+        if (modelConfig.getModelType().equals("multi_span_qa")) {
+            log.debug("Creating MultiSpanQuestionAnsweringTranslator");
+            return new MultiSpanQuestionAnsweringTranslator();
+        }
+        log.debug("Creating QuestionAnsweringTranslator");
         return new QuestionAnsweringTranslator();
     }
 
