@@ -66,6 +66,9 @@ public class QuestionAnsweringModel extends DLModel {
         if (modelConfig.getModelType().equals("multi_span_qa")) {
             log.debug("Creating MultiSpanQuestionAnsweringTranslator");
             return new MultiSpanQuestionAnsweringTranslator();
+        } else if (modelConfig.getModelType().equals("mashqa")) {
+            log.debug("Creating MashqaSentenceHighlightTranslator");
+            return new MashqaSentenceHighlightTranslator();
         }
         log.debug("Creating QuestionAnsweringTranslator");
         return new QuestionAnsweringTranslator();
