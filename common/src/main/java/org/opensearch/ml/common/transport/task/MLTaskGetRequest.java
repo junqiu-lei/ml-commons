@@ -27,26 +27,13 @@ import lombok.Getter;
 public class MLTaskGetRequest extends ActionRequest {
     @Getter
     String taskId;
-
     @Getter
     String tenantId;
 
-    // This is to identify if the get request is initiated by user or not. During batch task polling job,
-    // we also perform get operation. This field is to distinguish between
-    // these two situations.
-    @Getter
-    boolean isUserInitiatedGetTaskRequest;
-
     @Builder
     public MLTaskGetRequest(String taskId, String tenantId) {
-        this(taskId, tenantId, true);
-    }
-
-    @Builder
-    public MLTaskGetRequest(String taskId, String tenantId, Boolean isUserInitiatedGetTaskRequest) {
         this.taskId = taskId;
         this.tenantId = tenantId;
-        this.isUserInitiatedGetTaskRequest = isUserInitiatedGetTaskRequest;
     }
 
     public MLTaskGetRequest(StreamInput in) throws IOException {
@@ -54,7 +41,6 @@ public class MLTaskGetRequest extends ActionRequest {
         Version streamInputVersion = in.getVersion();
         this.taskId = in.readString();
         this.tenantId = streamInputVersion.onOrAfter(VERSION_2_19_0) ? in.readOptionalString() : null;
-        this.isUserInitiatedGetTaskRequest = in.readBoolean();
     }
 
     @Override
@@ -65,7 +51,6 @@ public class MLTaskGetRequest extends ActionRequest {
         if (streamOutputVersion.onOrAfter(VERSION_2_19_0)) {
             out.writeOptionalString(tenantId);
         }
-        out.writeBoolean(isUserInitiatedGetTaskRequest);
     }
 
     @Override

@@ -23,7 +23,6 @@ import org.opensearch.ml.common.utils.StringUtils;
 public class RemoteInferenceMLInput extends MLInput {
     public static final String PARAMETERS_FIELD = "parameters";
     public static final String ACTION_TYPE_FIELD = "action_type";
-    public static final String DLQ_FIELD = "dlq";
 
     public RemoteInferenceMLInput(StreamInput in) throws IOException {
         super(in);
@@ -38,7 +37,6 @@ public class RemoteInferenceMLInput extends MLInput {
         super();
         this.algorithm = functionName;
         Map<String, String> parameters = null;
-        Map<String, String> dlq = null;
         ActionType actionType = null;
         ensureExpectedToken(XContentParser.Token.START_OBJECT, parser.currentToken(), parser);
         while (parser.nextToken() != XContentParser.Token.END_OBJECT) {
@@ -52,15 +50,12 @@ public class RemoteInferenceMLInput extends MLInput {
                 case ACTION_TYPE_FIELD:
                     actionType = ActionType.from(parser.text());
                     break;
-                case DLQ_FIELD:
-                    dlq = StringUtils.getParameterMap(parser.map());
-                    break;
                 default:
                     parser.skipChildren();
                     break;
             }
         }
-        inputDataset = new RemoteInferenceInputDataSet(parameters, actionType, dlq);
+        inputDataset = new RemoteInferenceInputDataSet(parameters, actionType);
     }
 
 }

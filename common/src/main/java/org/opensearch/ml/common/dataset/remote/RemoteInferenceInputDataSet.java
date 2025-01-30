@@ -26,28 +26,20 @@ import lombok.Setter;
 @InputDataSet(MLInputDataType.REMOTE)
 public class RemoteInferenceInputDataSet extends MLInputDataset {
     private static final Version MINIMAL_SUPPORTED_VERSION_FOR_CLIENT_CONFIG = CommonValue.VERSION_2_16_0;
-    private static final Version MINIMAL_SUPPORTED_VERSION_FOR_DLQ_CONFIG = CommonValue.VERSION_2_19_0;
     @Setter
     private Map<String, String> parameters;
     @Setter
     private ActionType actionType;
-    @Setter
-    private Map<String, String> dlq;
 
     @Builder(toBuilder = true)
-    public RemoteInferenceInputDataSet(Map<String, String> parameters, ActionType actionType, Map<String, String> dlq) {
+    public RemoteInferenceInputDataSet(Map<String, String> parameters, ActionType actionType) {
         super(MLInputDataType.REMOTE);
         this.parameters = parameters;
         this.actionType = actionType;
-        this.dlq = dlq;
-    }
-
-    public RemoteInferenceInputDataSet(Map<String, String> parameters, ActionType actionType) {
-        this(parameters, actionType, null);
     }
 
     public RemoteInferenceInputDataSet(Map<String, String> parameters) {
-        this(parameters, null, null);
+        this(parameters, null);
     }
 
     public RemoteInferenceInputDataSet(StreamInput streamInput) throws IOException {
@@ -61,13 +53,6 @@ public class RemoteInferenceInputDataSet extends MLInputDataset {
                 actionType = streamInput.readEnum(ActionType.class);
             } else {
                 this.actionType = null;
-            }
-        }
-        if (streamInputVersion.onOrAfter(MINIMAL_SUPPORTED_VERSION_FOR_DLQ_CONFIG)) {
-            if (streamInput.readBoolean()) {
-                dlq = streamInput.readMap(s -> s.readString(), s -> s.readString());
-            } else {
-                this.dlq = null;
             }
         }
     }
@@ -86,14 +71,6 @@ public class RemoteInferenceInputDataSet extends MLInputDataset {
             if (actionType != null) {
                 streamOutput.writeBoolean(true);
                 streamOutput.writeEnum(actionType);
-            } else {
-                streamOutput.writeBoolean(false);
-            }
-        }
-        if (streamOutputVersion.onOrAfter(MINIMAL_SUPPORTED_VERSION_FOR_DLQ_CONFIG)) {
-            if (dlq != null) {
-                streamOutput.writeBoolean(true);
-                streamOutput.writeMap(dlq, StreamOutput::writeString, StreamOutput::writeString);
             } else {
                 streamOutput.writeBoolean(false);
             }
