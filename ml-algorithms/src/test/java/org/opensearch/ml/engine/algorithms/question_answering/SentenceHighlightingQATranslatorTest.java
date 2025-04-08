@@ -7,6 +7,8 @@ package org.opensearch.ml.engine.algorithms.question_answering;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.ml.engine.algorithms.question_answering.QAConstants.*;
@@ -24,11 +26,9 @@ import org.opensearch.ml.engine.algorithms.question_answering.sentence.DefaultSe
 import org.opensearch.ml.engine.algorithms.question_answering.sentence.Sentence;
 import org.opensearch.ml.engine.algorithms.question_answering.sentence.SentenceSegmenter;
 
-import ai.djl.modality.Input;
 import ai.djl.modality.Output;
 import ai.djl.ndarray.NDArray;
 import ai.djl.ndarray.NDList;
-import ai.djl.ndarray.NDManager;
 import ai.djl.ndarray.types.Shape;
 import ai.djl.translate.TranslatorContext;
 import lombok.extern.log4j.Log4j2;
@@ -39,12 +39,11 @@ public class SentenceHighlightingQATranslatorTest {
     private SentenceHighlightingQATranslator translator;
     private TranslatorContext translatorContext;
     private List<Sentence> sentences;
-    private String question;
 
     @Before
     public void setUp() {
         // Create test data
-        question = "What are the impacts of climate change?";
+        String question = "What are the impacts of climate change?";
         String textContext = "Many coastal cities face increased flooding during storms. "
             + "Farmers are experiencing unpredictable growing seasons and crop failures. "
             + "Scientists predict these environmental shifts will continue to accelerate. "
@@ -58,8 +57,6 @@ public class SentenceHighlightingQATranslatorTest {
         // Create mocks
         translator = SentenceHighlightingQATranslator.builder().build();
         translatorContext = mock(TranslatorContext.class);
-        NDManager manager = mock(NDManager.class);
-        Input input = mock(Input.class);
     }
 
     @Test
@@ -251,5 +248,134 @@ public class SentenceHighlightingQATranslatorTest {
         assertNotNull(translator);
         assertNotNull(translator.getSegmenter());
         assertEquals(DefaultSentenceSegmenter.class, translator.getSegmenter().getClass());
+    }
+
+    /**
+     * Test for getChunkEncoding method with overflow encoding handling.
+     * This tests the code in lines 235-242 of the SentenceHighlightingQATranslator class.
+     */
+    @Test
+    public void testGetChunkEncoding_WithOverflowEncodings() throws Exception {
+        // Create a mock encoding with overflow encodings
+        ai.djl.huggingface.tokenizers.Encoding mockEncoding = mock(ai.djl.huggingface.tokenizers.Encoding.class);
+        ai.djl.huggingface.tokenizers.Encoding mockOverflowEncoding1 = mock(ai.djl.huggingface.tokenizers.Encoding.class);
+        ai.djl.huggingface.tokenizers.Encoding mockOverflowEncoding2 = mock(ai.djl.huggingface.tokenizers.Encoding.class);
+
+        // Set up the mock to return overflow encodings
+        when(mockEncoding.getOverflowing())
+            .thenReturn(new ai.djl.huggingface.tokenizers.Encoding[] { mockOverflowEncoding1, mockOverflowEncoding2 });
+
+        // Create a mock tokenizer
+        ai.djl.huggingface.tokenizers.HuggingFaceTokenizer mockTokenizer = mock(ai.djl.huggingface.tokenizers.HuggingFaceTokenizer.class);
+        when(mockTokenizer.encode("test question", "test context")).thenReturn(mockEncoding);
+
+        // Create a translator with the mock tokenizer
+        SentenceHighlightingQATranslator translator = SentenceHighlightingQATranslator.builder().build();
+
+        // Set the tokenizer using reflection
+        java.lang.reflect.Field tokenizerField = SentenceHighlightingQATranslator.class.getDeclaredField("tokenizer");
+        tokenizerField.setAccessible(true);
+        tokenizerField.set(translator, mockTokenizer);
+
+        // Access the private getChunkEncoding method using reflection
+        java.lang.reflect.Method getChunkEncodingMethod = SentenceHighlightingQATranslator.class
+            .getDeclaredMethod("getChunkEncoding", String.class, String.class, int.class);
+        getChunkEncodingMethod.setAccessible(true);
+
+        // Test chunk 0 (initial chunk)
+        ai.djl.huggingface.tokenizers.Encoding result0 = (ai.djl.huggingface.tokenizers.Encoding) getChunkEncodingMethod
+            .invoke(translator, "test question", "test context", 0);
+        assertEquals(mockEncoding, result0);
+
+        // Test chunk 1 (first overflow chunk)
+        ai.djl.huggingface.tokenizers.Encoding result1 = (ai.djl.huggingface.tokenizers.Encoding) getChunkEncodingMethod
+            .invoke(translator, "test question", "test context", 1);
+        assertEquals(mockOverflowEncoding1, result1);
+
+        // Test chunk 2 (second overflow chunk)
+        ai.djl.huggingface.tokenizers.Encoding result2 = (ai.djl.huggingface.tokenizers.Encoding) getChunkEncodingMethod
+            .invoke(translator, "test question", "test context", 2);
+        assertEquals(mockOverflowEncoding2, result2);
+    }
+
+    /**
+     * Test for getChunkEncoding method with invalid chunk number.
+     * This tests the exception branch in lines 240-241 of the SentenceHighlightingQATranslator class.
+     */
+    @Test
+    public void testGetChunkEncoding_WithInvalidChunkNumber() throws Exception {
+        // Create a mock encoding with some overflow encodings
+        ai.djl.huggingface.tokenizers.Encoding mockEncoding = mock(ai.djl.huggingface.tokenizers.Encoding.class);
+        ai.djl.huggingface.tokenizers.Encoding mockOverflowEncoding = mock(ai.djl.huggingface.tokenizers.Encoding.class);
+
+        // Set up the mock to return a single overflow encoding
+        when(mockEncoding.getOverflowing()).thenReturn(new ai.djl.huggingface.tokenizers.Encoding[] { mockOverflowEncoding });
+
+        // Create a mock tokenizer
+        ai.djl.huggingface.tokenizers.HuggingFaceTokenizer mockTokenizer = mock(ai.djl.huggingface.tokenizers.HuggingFaceTokenizer.class);
+        when(mockTokenizer.encode("test question", "test context")).thenReturn(mockEncoding);
+
+        // Create a translator with the mock tokenizer
+        SentenceHighlightingQATranslator translator = SentenceHighlightingQATranslator.builder().build();
+
+        // Set the tokenizer using reflection
+        java.lang.reflect.Field tokenizerField = SentenceHighlightingQATranslator.class.getDeclaredField("tokenizer");
+        tokenizerField.setAccessible(true);
+        tokenizerField.set(translator, mockTokenizer);
+
+        // Access the private getChunkEncoding method using reflection
+        java.lang.reflect.Method getChunkEncodingMethod = SentenceHighlightingQATranslator.class
+            .getDeclaredMethod("getChunkEncoding", String.class, String.class, int.class);
+        getChunkEncodingMethod.setAccessible(true);
+
+        // Test with invalid chunk number (larger than available overflow encodings)
+        try {
+            getChunkEncodingMethod.invoke(translator, "test question", "test context", 2);
+            fail("Should have thrown an exception for invalid chunk number");
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            // Verify that the cause is an IllegalArgumentException
+            assertTrue(e.getCause() instanceof IllegalArgumentException);
+            assertEquals("Invalid chunk number: 2", e.getCause().getMessage());
+        }
+    }
+
+    /**
+     * Test for getChunkEncoding method with null overflow encodings.
+     * This tests another branch in the handling of overflow encodings in the getChunkEncoding method.
+     */
+    @Test
+    public void testGetChunkEncoding_WithNullOverflowEncodings() throws Exception {
+        // Create a mock encoding with null overflow encodings
+        ai.djl.huggingface.tokenizers.Encoding mockEncoding = mock(ai.djl.huggingface.tokenizers.Encoding.class);
+
+        // Set up the mock to return null for overflow encodings
+        when(mockEncoding.getOverflowing()).thenReturn(null);
+
+        // Create a mock tokenizer
+        ai.djl.huggingface.tokenizers.HuggingFaceTokenizer mockTokenizer = mock(ai.djl.huggingface.tokenizers.HuggingFaceTokenizer.class);
+        when(mockTokenizer.encode("test question", "test context")).thenReturn(mockEncoding);
+
+        // Create a translator with the mock tokenizer
+        SentenceHighlightingQATranslator translator = SentenceHighlightingQATranslator.builder().build();
+
+        // Set the tokenizer using reflection
+        java.lang.reflect.Field tokenizerField = SentenceHighlightingQATranslator.class.getDeclaredField("tokenizer");
+        tokenizerField.setAccessible(true);
+        tokenizerField.set(translator, mockTokenizer);
+
+        // Access the private getChunkEncoding method using reflection
+        java.lang.reflect.Method getChunkEncodingMethod = SentenceHighlightingQATranslator.class
+            .getDeclaredMethod("getChunkEncoding", String.class, String.class, int.class);
+        getChunkEncodingMethod.setAccessible(true);
+
+        // Test with chunk number > 0 when overflow encodings are null
+        try {
+            getChunkEncodingMethod.invoke(translator, "test question", "test context", 1);
+            fail("Should have thrown an exception for invalid chunk number with null overflow encodings");
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            // Verify that the cause is an IllegalArgumentException
+            assertTrue(e.getCause() instanceof IllegalArgumentException);
+            assertEquals("Invalid chunk number: 1", e.getCause().getMessage());
+        }
     }
 }
