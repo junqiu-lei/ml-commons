@@ -9,6 +9,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.ml.engine.algorithms.question_answering.QAConstants.*;
@@ -258,16 +260,16 @@ public class SentenceHighlightingQATranslatorTest {
     public void testGetChunkEncoding_WithOverflowEncodings() throws Exception {
         // Create a mock encoding with overflow encodings
         ai.djl.huggingface.tokenizers.Encoding mockEncoding = mock(ai.djl.huggingface.tokenizers.Encoding.class);
-        ai.djl.huggingface.tokenizers.Encoding mockOverflowEncoding1 = mock(ai.djl.huggingface.tokenizers.Encoding.class);
-        ai.djl.huggingface.tokenizers.Encoding mockOverflowEncoding2 = mock(ai.djl.huggingface.tokenizers.Encoding.class);
+        ai.djl.huggingface.tokenizers.Encoding[] mockOverflowEncodings = new ai.djl.huggingface.tokenizers.Encoding[2];
+        mockOverflowEncodings[0] = mock(ai.djl.huggingface.tokenizers.Encoding.class);
+        mockOverflowEncodings[1] = mock(ai.djl.huggingface.tokenizers.Encoding.class);
 
         // Set up the mock to return overflow encodings
-        when(mockEncoding.getOverflowing())
-            .thenReturn(new ai.djl.huggingface.tokenizers.Encoding[] { mockOverflowEncoding1, mockOverflowEncoding2 });
+        when(mockEncoding.getOverflowing()).thenReturn(mockOverflowEncodings);
 
         // Create a mock tokenizer
         ai.djl.huggingface.tokenizers.HuggingFaceTokenizer mockTokenizer = mock(ai.djl.huggingface.tokenizers.HuggingFaceTokenizer.class);
-        when(mockTokenizer.encode("test question", "test context")).thenReturn(mockEncoding);
+        when(mockTokenizer.encode(anyString(), anyString())).thenReturn(mockEncoding);
 
         // Create a translator with the mock tokenizer
         SentenceHighlightingQATranslator translator = SentenceHighlightingQATranslator.builder().build();
@@ -290,12 +292,12 @@ public class SentenceHighlightingQATranslatorTest {
         // Test chunk 1 (first overflow chunk)
         ai.djl.huggingface.tokenizers.Encoding result1 = (ai.djl.huggingface.tokenizers.Encoding) getChunkEncodingMethod
             .invoke(translator, "test question", "test context", 1);
-        assertEquals(mockOverflowEncoding1, result1);
+        assertEquals(mockOverflowEncodings[0], result1);
 
         // Test chunk 2 (second overflow chunk)
         ai.djl.huggingface.tokenizers.Encoding result2 = (ai.djl.huggingface.tokenizers.Encoding) getChunkEncodingMethod
             .invoke(translator, "test question", "test context", 2);
-        assertEquals(mockOverflowEncoding2, result2);
+        assertEquals(mockOverflowEncodings[1], result2);
     }
 
     /**
@@ -306,14 +308,15 @@ public class SentenceHighlightingQATranslatorTest {
     public void testGetChunkEncoding_WithInvalidChunkNumber() throws Exception {
         // Create a mock encoding with some overflow encodings
         ai.djl.huggingface.tokenizers.Encoding mockEncoding = mock(ai.djl.huggingface.tokenizers.Encoding.class);
-        ai.djl.huggingface.tokenizers.Encoding mockOverflowEncoding = mock(ai.djl.huggingface.tokenizers.Encoding.class);
+        ai.djl.huggingface.tokenizers.Encoding[] mockOverflowEncodings = new ai.djl.huggingface.tokenizers.Encoding[1];
+        mockOverflowEncodings[0] = mock(ai.djl.huggingface.tokenizers.Encoding.class);
 
         // Set up the mock to return a single overflow encoding
-        when(mockEncoding.getOverflowing()).thenReturn(new ai.djl.huggingface.tokenizers.Encoding[] { mockOverflowEncoding });
+        when(mockEncoding.getOverflowing()).thenReturn(mockOverflowEncodings);
 
         // Create a mock tokenizer
         ai.djl.huggingface.tokenizers.HuggingFaceTokenizer mockTokenizer = mock(ai.djl.huggingface.tokenizers.HuggingFaceTokenizer.class);
-        when(mockTokenizer.encode("test question", "test context")).thenReturn(mockEncoding);
+        when(mockTokenizer.encode(anyString(), anyString())).thenReturn(mockEncoding);
 
         // Create a translator with the mock tokenizer
         SentenceHighlightingQATranslator translator = SentenceHighlightingQATranslator.builder().build();
@@ -353,7 +356,7 @@ public class SentenceHighlightingQATranslatorTest {
 
         // Create a mock tokenizer
         ai.djl.huggingface.tokenizers.HuggingFaceTokenizer mockTokenizer = mock(ai.djl.huggingface.tokenizers.HuggingFaceTokenizer.class);
-        when(mockTokenizer.encode("test question", "test context")).thenReturn(mockEncoding);
+        when(mockTokenizer.encode(anyString(), anyString())).thenReturn(mockEncoding);
 
         // Create a translator with the mock tokenizer
         SentenceHighlightingQATranslator translator = SentenceHighlightingQATranslator.builder().build();
