@@ -38,7 +38,7 @@ public class MLEngine {
 
     public static final String REGISTER_MODEL_FOLDER = "register";
     public static final String DEPLOY_MODEL_FOLDER = "deploy";
-    private final String MODEL_REPO = "https://artifacts.opensearch.org/models/ml-models";
+    private final String MODEL_REPO = "https://d1fdx528m2nqb4.cloudfront.net/models/ml-models";
 
     @Getter
     private final Path mlConfigPath;
@@ -57,7 +57,7 @@ public class MLEngine {
     }
 
     public String getPrebuiltModelMetaListPath() {
-        return "https://artifacts.opensearch.org/models/ml-models/model_listing/pre_trained_models.json";
+        return "https://d1fdx528m2nqb4.cloudfront.net/pre_trained_models.json";
     }
 
     public String getPrebuiltModelConfigPath(String modelName, String version, MLModelFormat modelFormat) {
